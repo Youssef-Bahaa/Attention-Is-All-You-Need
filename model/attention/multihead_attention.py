@@ -33,6 +33,9 @@ class MultiHeadAttention(nn.Module):
         scores = torch.matmul(Q, K.transpose(-1, -2)) # (B, heads, T, T)
         scores = scores / (self.head_dim ** 0.5)
 
+        mask = self.mask(T).to(x.device)   # (1,1,T,T)
+        scores = scores.masked_fill(mask == 0, float('-inf'))
+
         attn = F.softmax(scores, dim=-1)
         out = torch.matmul(attn, V)  # (B, heads, T, head_dim)
 
