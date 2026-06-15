@@ -5,7 +5,7 @@ from feedforward import FeedForward
 
 class EncoderLayer(nn.Module):
     def __init__(self, embed_dim, num_heads, ff_dim):
-        super.__init__()
+        super().__init__()
 
         self.attn = MultiHeadAttention(embed_dim, num_heads)
         self.norm1 = nn.LayerNorm(embed_dim)
@@ -15,10 +15,10 @@ class EncoderLayer(nn.Module):
         self.dropout = nn.Dropout(0.1)
 
     def forward(self, x):
-        attn_out = self.attn(self.attn)
+        attn_out = self.attn(x)
         x = self.norm1(x + self.dropout(attn_out))
 
         ffn_out = self.ff(x)
-        self.norm2(x + self.dropout(ffn_out))
+        x = self.norm2(x + self.dropout(ffn_out))
 
         return x
