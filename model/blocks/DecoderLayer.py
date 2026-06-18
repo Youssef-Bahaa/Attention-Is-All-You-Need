@@ -24,7 +24,7 @@ class DecoderLayer(nn.Module):
             decoder_x + x
         )
 
-        x = self.cross_attention(encoder_output, decoder_x)
+        x = self.cross_attention(decoder_x, encoder_output)
 
         decoder_x = self.norm2(x + decoder_x)
 

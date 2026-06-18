@@ -12,7 +12,7 @@ class CrossAttention(nn.Module):
 
         self.scale = embed_dim ** 0.5
 
-    def forward(self, input, output):
+    def forward(self, output, input):
 
         Q = self.query(output) # [30, 128]
         K = self.key(input)    # [20, 128]
