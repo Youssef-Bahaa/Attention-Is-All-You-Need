@@ -3,15 +3,15 @@ import torch.nn as nn
 import math
 
 class PositionalEncoding(nn.Module):
-    def __init__(self, d_model, len):
+    def __init__(self, d_model, max_len):
         super().__init__()
 
         position = torch.arange(
-            0,len,
+            0, max_len,
             dtype=torch.float32
         ).unsqueeze(1)
 
-        pe = torch.zeros(len, d_model)
+        pe = torch.zeros(max_len, d_model)
         div = torch.exp(torch.arange(0, d_model, 2) * -(math.log(10000) / d_model))
 
         pe[:, 0::2] = torch.sin(position * div)
