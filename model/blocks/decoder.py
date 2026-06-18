@@ -20,6 +20,6 @@ class Decoder(nn.Module):
     def forward(self, encoder_output, x, causal_mask=None):
 
         for layer in self.layers:
-            x = layer(encoder_output, x, causal_mask)
+            x = layer(x, encoder_output, causal_mask)
 
         return self.norm(x)
