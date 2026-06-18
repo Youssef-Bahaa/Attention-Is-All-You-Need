@@ -2,6 +2,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
+
 class MultiHeadAttention(nn.Module):
     def __init__(self, embed_dim, num_heads):
         super().__init__()
@@ -18,7 +19,7 @@ class MultiHeadAttention(nn.Module):
         self.out = nn.Linear(embed_dim, embed_dim)
 
 
-    def forward(self, x):
+    def forward(self, x, mask=None):
         B, T, D = x.shape
 
         Q = self.query(x)   # (B, T, D)
@@ -32,9 +33,8 @@ class MultiHeadAttention(nn.Module):
 
         scores = torch.matmul(Q, K.transpose(-1, -2)) # (B, heads, T, T)
         scores = scores / (self.head_dim ** 0.5)
-
-        mask = self.mask(T).to(x.device)   # (1,1,T,T)
-        scores = scores.masked_fill(mask == 0, float('-inf'))
+        if mask is not None:
+            scores = scores.masked_fill(mask == 0, float('-inf'))
 
         attn = F.softmax(scores, dim=-1)
         out = torch.matmul(attn, V)  # (B, heads, T, head_dim)

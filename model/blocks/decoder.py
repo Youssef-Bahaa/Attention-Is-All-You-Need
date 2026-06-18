@@ -1,10 +1,7 @@
 import torch
 import torch.nn as nn
-from model.attention.multihead_attention import MultiHeadAttention
-from model.attention.cross_attention import CrossAttention
-from feedforward import FeedForward
-from utils.masking import CausalMask
 from DecoderLayer import DecoderLayer
+
 
 class Decoder(nn.Module):
     def __init__(self, num_layers, embed_dim, num_heads, ff_dim):
@@ -17,9 +14,9 @@ class Decoder(nn.Module):
 
         self.norm = nn.LayerNorm(embed_dim)
 
-    def forward(self, encoder_output, x, causal_mask=None):
+    def forward(self, encoder_output, x):
 
         for layer in self.layers:
-            x = layer(x, encoder_output, causal_mask)
+            x = layer(x, encoder_output)
 
         return self.norm(x)
