@@ -14,9 +14,9 @@ class Encoder(nn.Module):
         ])
         self.norm = nn.LayerNorm(embed_dim)
 
-    def forward(self, x):
+    def forward(self, x, mask=None):
         for layer in self.layers:
-            x = layer(x)
+            x = layer(x, mask=mask)
 
         return self.norm(x)
 

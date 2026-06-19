@@ -20,7 +20,7 @@ class Transformer(nn.Module):
     ):
         super().__init__()
 
-        self.token_embedding = nn.Embedding(vocab_size, embed_dim)
+        self.token_embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=0)
 
         self.pos_encoding = PositionalEncoding(embed_dim, max_len)
 
@@ -36,7 +36,7 @@ class Transformer(nn.Module):
 
         self.fc_out = nn.Linear(embed_dim, vocab_size)
 
-    def forward(self, src, tgt):
+    def forward(self, src, tgt, src_mask=None, tgt_mask=None):
 
         src = self.token_embedding(src)  # (B, S, D)
         tgt = self.token_embedding(tgt)  # (B, T, D)
@@ -47,13 +47,8 @@ class Transformer(nn.Module):
         src = self.dropout(src)
         tgt = self.dropout(tgt)
 
-        encoder_out = self.encoder(src)
-
-
-        out = self.decoder(
-            encoder_output=encoder_out,
-            x=tgt,
-        )
+        encoder_out = self.encoder(src, mask=src_mask)
+        out = self.decoder(encoder_output=encoder_out, x=tgt, src_mask=src_mask, tgt_mask=tgt_mask)
 
         logits = self.fc_out(out)  # (B, T, vocab_size)
 
