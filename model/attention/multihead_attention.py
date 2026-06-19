@@ -13,32 +13,38 @@ class MultiHeadAttention(nn.Module):
         self.head_dim = embed_dim // num_heads
 
         self.query = nn.Linear(embed_dim,embed_dim)
-        self.key   = nn.Linear(embed_dim,embed_dim)
+        self.key = nn.Linear(embed_dim,embed_dim)
         self.value = nn.Linear(embed_dim,embed_dim)
 
         self.out = nn.Linear(embed_dim, embed_dim)
+        self.attn_dropout = nn.Dropout(0.1)
 
+    def forward(self, q, k, v, mask=None):
+        B, T_q, D = q.shape
+        _, T_k, _ = k.shape
 
-    def forward(self, x, mask=None):
-        B, T, D = x.shape
+        Q = self.query(q)  # (B, T_q, D)
+        K = self.key(k)  # (B, T_k, D)
+        V = self.value(v)  # (B, T_k, D)
 
-        Q = self.query(x)   # (B, T, D)
-        K = self.key(x)     # (B, T, D)
-        V = self.value(x)   # (B, T, D)
+        # Reshape for multi-head split: (B, heads, T, head_dim)
+        Q = Q.view(B, T_q, self.num_heads, self.head_dim).transpose(1, 2)
+        K = K.view(B, T_k, self.num_heads, self.head_dim).transpose(1, 2)
+        V = V.view(B, T_k, self.num_heads, self.head_dim).transpose(1, 2)
 
-        Q = Q.view(B, T, self.num_heads, self.head_dim).transpose(1, 2) # (B, heads, T, head_dim)
-        K = K.view(B, T, self.num_heads, self.head_dim).transpose(1, 2) # (B, heads, T, head_dim)
-        V = V.view(B, T, self.num_heads, self.head_dim).transpose(1, 2) # (B, heads, T, head_dim)
-
-
-        scores = torch.matmul(Q, K.transpose(-1, -2)) # (B, heads, T, T)
+        # Scaled Dot-Product Attention
+        scores = torch.matmul(Q, K.transpose(-1, -2))  # (B, heads, T_q, T_k)
         scores = scores / (self.head_dim ** 0.5)
+
         if mask is not None:
             scores = scores.masked_fill(mask == 0, float('-inf'))
 
         attn = F.softmax(scores, dim=-1)
-        out = torch.matmul(attn, V)  # (B, heads, T, head_dim)
+        attn = self.attn_dropout(attn)
 
-        out = out.transpose(1, 2).contiguous().view(B, T, D)
+        out = torch.matmul(attn, V)  # (B, heads, T_q, head_dim)
+
+        # Concatenate heads back together
+        out = out.transpose(1, 2).contiguous().view(B, T_q, D)
 
         return self.out(out)

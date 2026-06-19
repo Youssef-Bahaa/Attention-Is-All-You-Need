@@ -8,6 +8,7 @@ class FeedForward(nn.Module):
         self.net = nn.Sequential(
             nn.Linear(embed_dim, hidden_dim),
             nn.ReLU(),
+            nn.Dropout(0.1),
             nn.Linear(hidden_dim, embed_dim)
         )
 
