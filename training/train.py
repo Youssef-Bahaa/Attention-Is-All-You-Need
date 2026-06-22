@@ -24,16 +24,42 @@ MAX_LEN = 128
 BATCH_SIZE = 128
 NUM_EPOCHS = 10
 LEARNING_RATE = 3e-4
+CLIP = 1.0
 PAD_IDX = 0
 
 
 
 def train_epoch(model, loader, optimizer, criterion):
-    pass
+    model.train()
+    total_loss = 0
+    for src, tgt, tgt_y in loader:
+        src, tgt, tgt_y = src.to(DEVICE), tgt.to(DEVICE), tgt_y.to(DEVICE)
+
+        optimizer.zero_grad()
+        out = model(src, tgt)  # (B, T, tgt_vocab)
+        out = out.reshape(-1, out.size(-1))  # (B*T, tgt_vocab)
+        tgt_y = tgt_y.reshape(-1)  # (B*T,)
+
+        loss = criterion(out, tgt_y)
+        loss.backward()
+        nn.utils.clip_grad_norm_(model.parameters(), CLIP)
+        optimizer.step()
+        total_loss += loss.item()
+
+    return total_loss / len(loader)
+
 
 
 def evaluate(model, loader, criterion):
-    pass
+    model.eval()
+    total_loss = 0
+    for src, tgt, tgt_y in loader:
+        src, tgt, tgt_y = src.to(DEVICE), tgt.to(DEVICE), tgt_y.to(DEVICE)
+        out = model(src, tgt)
+        out = out.reshape(-1, out.size(-1))
+        tgt_y = tgt_y.reshape(-1)
+        total_loss += criterion(out, tgt_y).item()
+    return total_loss / len(loader)
 
 
 def main():
@@ -87,5 +113,6 @@ def main():
 
         print(f"Epoch {epoch:02d} | train {train_loss:.3f} | val {val_loss:.3f}{saved}")
 
-
+if __name__ == "__main__":
+    main()
 
