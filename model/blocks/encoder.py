@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 from model.attention.multihead_attention import MultiHeadAttention
 from .feedforward import FeedForward
-from .EncoderLayer import EncoderLayer
+from .encoder_layer import EncoderLayer
 
 class Encoder(nn.Module):
     def __init__(self, num_layers, embed_dim, num_heads, ff_dim):
