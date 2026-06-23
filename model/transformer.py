@@ -9,18 +9,20 @@ from embeddings.positional_encoding import PositionalEncoding
 class Transformer(nn.Module):
     def __init__(
         self,
-        vocab_size,
+        src_vocab_size,
+        tgt_vocab_size,
         embed_dim,
         num_heads,
         ff_dim,
         num_encoder_layers,
         num_decoder_layers,
         max_len=512,
-        drop_out = 0.1
+        dropout = 0.1
     ):
         super().__init__()
 
-        self.token_embedding = nn.Embedding(vocab_size, embed_dim, padding_idx=0)
+        self.src_embedding = nn.Embedding(src_vocab_size, embed_dim, padding_idx=0)
+        self.tgt_embedding = nn.Embedding(tgt_vocab_size, embed_dim, padding_idx=0)
 
         self.pos_encoding = PositionalEncoding(embed_dim, max_len)
 
@@ -28,18 +30,18 @@ class Transformer(nn.Module):
         num_encoder_layers, embed_dim, num_heads, ff_dim
         )
 
-        self.dropout = nn.Dropout(drop_out)
+        self.dropout = nn.Dropout(dropout)
 
         self.decoder = Decoder(
             num_decoder_layers, embed_dim, num_heads, ff_dim
         )
 
-        self.fc_out = nn.Linear(embed_dim, vocab_size)
+        self.fc_out = nn.Linear(embed_dim, tgt_vocab_size)
 
     def forward(self, src, tgt, src_mask=None, tgt_mask=None):
 
-        src = self.token_embedding(src)  # (B, S, D)
-        tgt = self.token_embedding(tgt)  # (B, T, D)
+        src = self.src_embedding(src)  # (B, S, D)
+        tgt = self.tgt_embedding(tgt)  # (B, T, D)
 
         src = self.pos_encoding(src)
         tgt = self.pos_encoding(tgt)

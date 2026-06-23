@@ -1,5 +1,5 @@
 import torch
-import sys, os
+import sys, os, pickle
 from model.transformer import Transformer
 
 
@@ -38,7 +38,34 @@ def load_model_vocabs(checkpoint="best_model.pt"):
 
 
 def translate(sentence, model, src_vocab, tgt_vocab, max_len=50):
-    pass
+    src_ids = src_vocab.encode(sentence)
+    src_tensor = torch.tensor(src_ids).unsqueeze(0).to(DEVICE)
+
+    with torch.no_grad():
+        src_emb = model.dropout(model.pos_encoding(model.src_embedding(src_tensor)))
+        enc_out = model.encoder(src_emb)
+
+        decoded = [tgt_vocab.SOS_IDX]
+        with torch.no_grad():
+            for _ in range(max_len):
+                tgt_tensor = torch.tensor(decoded).unsqueeze(0).to(DEVICE)
+                tgt_emb = model.dropout(model.pos_encoding(model.tgt_embedding(tgt_tensor)))
+
+                out = model.decoder(
+                    encoder_output=enc_out,
+                    x=tgt_emb,
+                    src_mask=None,
+                    tgt_mask=None,
+                )
+
+                next_id = model.fc_out(out)[0, -1, :].argmax(-1).item()
+                if next_id == tgt_vocab.EOS_IDX:
+                    break
+                decoded.append(next_id)
+
+    # 4. Decode ids -> string (Vocab.decode skips <sos>/<eos>/<pad>)
+    return tgt_vocab.decode(decoded)
+
 
 
 if __name__ == "__main__":
