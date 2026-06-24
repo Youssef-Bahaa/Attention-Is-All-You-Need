@@ -62,7 +62,7 @@ def train_epoch(model, loader, optimizer, criterion, scheduler):
 
 
         optimizer.zero_grad()
-        out = model(src, tgt)  # (B, T, tgt_vocab)
+        out = model(src, tgt, src_mask=src_mask, tgt_mask=tgt_mask)  # (B, T, tgt_vocab)
         out = out.reshape(-1, out.size(-1))  # (B*T, tgt_vocab)
         tgt_y = tgt_y.reshape(-1)  # (B*T,)
 
@@ -86,7 +86,7 @@ def evaluate(model, loader, criterion):
         src_mask = make_padding_mask(src, PAD_IDX)
         tgt_mask = make_padding_mask(tgt, PAD_IDX)
 
-        out = model(src, tgt)
+        out = model(src, tgt, src_mask=src_mask, tgt_mask=tgt_mask)
         out = out.reshape(-1, out.size(-1))
         tgt_y = tgt_y.reshape(-1)
         total_loss += criterion(out, tgt_y).item()
