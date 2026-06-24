@@ -24,7 +24,7 @@ class DecoderLayer(nn.Module):
         causal_mask = CausalMask.create(T, decoder_x.device)
 
         if tgt_mask is not None:
-            combined_mask = causal_mask & tgt_mask  # broadcasts to (B, 1, T, T)
+            combined_mask = causal_mask.bool() & tgt_mask.bool()  # broadcasts to (B, 1, T, T)
         else:
             combined_mask = causal_mask
 
