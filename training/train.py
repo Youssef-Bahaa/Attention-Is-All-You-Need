@@ -15,7 +15,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import pickle
 import logging
-
+from utils.masking import make_padding_mask
 
 logging.basicConfig(
     level=logging.INFO,
@@ -57,6 +57,9 @@ def train_epoch(model, loader, optimizer, criterion, scheduler):
     total_loss = 0
     for src, tgt, tgt_y in loader:
         src, tgt, tgt_y = src.to(DEVICE), tgt.to(DEVICE), tgt_y.to(DEVICE)
+        src_mask = make_padding_mask(src, PAD_IDX)          # (B,1,1,S)
+        tgt_mask = make_padding_mask(tgt, PAD_IDX)          # (B,1,1,T)
+
 
         optimizer.zero_grad()
         out = model(src, tgt)  # (B, T, tgt_vocab)
@@ -79,6 +82,10 @@ def evaluate(model, loader, criterion):
     total_loss = 0
     for src, tgt, tgt_y in loader:
         src, tgt, tgt_y = src.to(DEVICE), tgt.to(DEVICE), tgt_y.to(DEVICE)
+
+        src_mask = make_padding_mask(src, PAD_IDX)
+        tgt_mask = make_padding_mask(tgt, PAD_IDX)
+
         out = model(src, tgt)
         out = out.reshape(-1, out.size(-1))
         tgt_y = tgt_y.reshape(-1)
