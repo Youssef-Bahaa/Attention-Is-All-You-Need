@@ -38,8 +38,8 @@ NUM_LAYERS = 6
 DROPOUT = 0.1
 MAX_LEN = 128
 BATCH_SIZE = 128
-NUM_EPOCHS = 10
-LEARNING_RATE = 3e-4
+NUM_EPOCHS = 100
+LEARNING_RATE = 1e-4
 CLIP = 1.0
 PAD_IDX = 0
 
@@ -47,7 +47,7 @@ PAD_IDX = 0
 
 def lr_lambda(step):
     step = max(step, 1)
-    warmup = 4000
+    warmup = 450
     return (512 ** -0.5) * min(step ** -0.5, step * warmup ** -1.5)
 
 
@@ -150,7 +150,6 @@ def main():
         if val_loss < best_val:
             best_val = val_loss
             torch.save(model.state_dict(), "best_model.pt")
-            saved = "saved"
             logger.info(f"Epoch {epoch:02d} | train {train_loss:.3f} | val {val_loss:.3f}{saved}")
         else:
             logger.info(f"Epoch {epoch:02d} | train {train_loss:.3f} | val {val_loss:.3f}")
