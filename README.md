@@ -213,29 +213,5 @@ All hyperparameters currently live as constants at the top of `training/train.py
   booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
   year      = {2017}
 }
-```epochs | 1000 |
-| `LEARNING_RATE` | Base learning rate (Adam) | 1e-4 |
-| `CLIP` | Gradient clipping max norm | 1.0 |
-| Optimizer | Adam (β1=0.9, β2=0.98, eps=1e-9) | — |
-| LR schedule | Transformer warmup schedule (`warmup=450` steps) | — |
 
----
-
-## Implementation Notes
-
-- **Tokenization**: a simple lowercase whitespace splitter (`data/tokenizer.py`), not a subword tokenizer like BPE — sufficient for Multi30k's vocabulary size but a limiting factor on larger corpora.
-- **Positional encoding**: fixed sinusoidal encodings (`sin`/`cos` of varying frequency) are added to embeddings rather than learned positional embeddings.
-
----
-
-## Citation
-
-```bibtex
-@inproceedings{vaswani2017attention,
-  author    = {Ashish Vaswani and Noam Shazeer and Niki Parmar and Jakob Uszkoreit and
-               Llion Jones and Aidan N. Gomez and Lukasz Kaiser and Illia Polosukhin},
-  title     = {Attention Is All You Need},
-  booktitle = {Advances in Neural Information Processing Systems (NeurIPS)},
-  year      = {2017}
-}
 ```
