@@ -1,4 +1,3 @@
-import torch
 import torch.nn as nn
 
 from model.blocks.encoder import Encoder

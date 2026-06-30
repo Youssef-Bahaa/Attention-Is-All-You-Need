@@ -1,7 +1,4 @@
-import torch
 import torch.nn as nn
-from model.attention.multihead_attention import MultiHeadAttention
-from .feedforward import FeedForward
 from .encoder_layer import EncoderLayer
 
 class Encoder(nn.Module):
