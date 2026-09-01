@@ -55,5 +55,16 @@ class Transformer(nn.Module):
 
         return logits
 
+    def encode(self, src, src_mask=None):
+        src = self.src_embedding(src)
+        src = self.pos_encoding(src)
+        src = self.dropout(src)
+        return self.encoder(src, mask=src_mask)
 
+    def decode(self, tgt, encoder_out, src_mask=None, tgt_mask=None):
+        tgt = self.tgt_embedding(tgt)
+        tgt = self.pos_encoding(tgt)
+        tgt = self.dropout(tgt)
+        out = self.decoder(encoder_output=encoder_out, x=tgt, src_mask=src_mask, tgt_mask=tgt_mask)
+        return self.fc_out(out)
 

@@ -16,6 +16,7 @@ from torch.utils.data import DataLoader
 import pickle
 import logging
 from utils.masking import make_padding_mask
+from training.evaluate import evaluate_bleu
 
 logging.basicConfig(
     level=logging.INFO,
@@ -42,7 +43,7 @@ NUM_EPOCHS = 1000
 LEARNING_RATE = 1e-4
 CLIP = 1.0
 PAD_IDX = 0
-
+BLEU_EVERY = 5
 
 
 def lr_lambda(step):
@@ -146,15 +147,19 @@ def main():
         train_loss = train_epoch(model, train_loader, optimizer, criterion, scheduler)
         val_loss = evaluate(model, val_loader, criterion)
 
+        bleu_str = ""
+        if epoch % BLEU_EVERY == 0 or epoch == NUM_EPOCHS:
+            bleu_score, _, _ = evaluate_bleu(model, val_loader, src_vocab, tgt_vocab, DEVICE, max_len=MAX_LEN)
+            bleu_str = f" | BLEU {bleu_score:.2f}"
+
         saved = ""
         if val_loss < best_val:
             best_val = val_loss
+            saved = " (saved)"
             torch.save(model.state_dict(), "best_model.pt")
-            logger.info(f"Epoch {epoch:02d} | train {train_loss:.3f} | val {val_loss:.3f}{saved}")
-        else:
-            logger.info(f"Epoch {epoch:02d} | train {train_loss:.3f} | val {val_loss:.3f}")
 
-        print(f"Epoch {epoch:02d} | train {train_loss:.3f} | val {val_loss:.3f}{saved}")
+        logger.info(f"Epoch {epoch:02d} | train {train_loss:.3f} | val {val_loss:.3f}{bleu_str}{saved}")
+        print(f"Epoch {epoch:02d} | train {train_loss:.3f} | val {val_loss:.3f}{bleu_str}{saved}")
 
 if __name__ == "__main__":
     main()
