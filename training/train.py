@@ -48,7 +48,7 @@ BLEU_EVERY = 5
 
 def lr_lambda(step):
     step = max(step, 1)
-    warmup = 450
+    warmup = 4000
     return (512 ** -0.5) * min(step ** -0.5, step * warmup ** -1.5)
 
 
