@@ -40,6 +40,25 @@ def ids_to_text(ids, vocab, eos_idx):
     return " ".join(t for t in tokens if t not in ("<pad>", "<sos>"))
 
 
+def evaluate_bleu(model, dataloader, src_vocab, tgt_vocab, device, max_len=128):
+    model.eval()
+    hyps, refs = [], []
+    eos_idx = tgt_vocab.EOS_IDX
+
+    for src_b, tgt, tgt_y in dataloader:
+        src_b = src_b.to(device)
+        full_tgt = torch.cat([tgt[:, :1], tgt_y], dim=1)
+        src_mask = make_src_mask(src_b).to(device)
+        pred_ids = greedy_decode_batch(model, src_b, src_mask, tgt_vocab, max_len, device)
+
+        for pred_row, tgt_row in zip(pred_ids, full_tgt):
+            hyps.append(ids_to_text(pred_row.tolist(), tgt_vocab, eos_idx))
+            refs.append(ids_to_text(tgt_row.tolist(), tgt_vocab, eos_idx))
+
+    bleu = sacrebleu.corpus_bleu(hyps, [refs])
+    return bleu.score, hyps, refs
+
+
 def build_eval_loader(split="test", batch_size=128, max_len=128, pad_idx=0):
     with open("src_vocab.pkl", "rb") as f:
         src_vocab = pickle.load(f)
