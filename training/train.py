@@ -29,21 +29,22 @@ logging.basicConfig(
 )
 logger = logging.getLogger(__name__)
 
-# Hyperparameters
-
 DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 EMBED_DIM = 512
 NUM_HEADS = 8
 FF_DIM = 2048
 NUM_LAYERS = 6
-DROPOUT = 0.1
+DROPOUT = 0.2
 MAX_LEN = 128
 BATCH_SIZE = 128
-NUM_EPOCHS = 1000
+NUM_EPOCHS = 60
 LEARNING_RATE = 1
+WEIGHT_DECAY = 1e-4
+LABEL_SMOOTHING = 0.1
 CLIP = 1.0
 PAD_IDX = 0
 BLEU_EVERY = 5
+PATIENCE = 10
 
 
 def lr_lambda(step):
@@ -52,20 +53,18 @@ def lr_lambda(step):
     return (512 ** -0.5) * min(step ** -0.5, step * warmup ** -1.5)
 
 
-
 def train_epoch(model, loader, optimizer, criterion, scheduler):
     model.train()
     total_loss = 0
     for src, tgt, tgt_y in loader:
         src, tgt, tgt_y = src.to(DEVICE), tgt.to(DEVICE), tgt_y.to(DEVICE)
-        src_mask = make_padding_mask(src, PAD_IDX)          # (B,1,1,S)
-        tgt_mask = make_padding_mask(tgt, PAD_IDX)          # (B,1,1,T)
-
+        src_mask = make_padding_mask(src, PAD_IDX)
+        tgt_mask = make_padding_mask(tgt, PAD_IDX)
 
         optimizer.zero_grad()
-        out = model(src, tgt, src_mask=src_mask, tgt_mask=tgt_mask)  # (B, T, tgt_vocab)
-        out = out.reshape(-1, out.size(-1))  # (B*T, tgt_vocab)
-        tgt_y = tgt_y.reshape(-1)  # (B*T,)
+        out = model(src, tgt, src_mask=src_mask, tgt_mask=tgt_mask)
+        out = out.reshape(-1, out.size(-1))
+        tgt_y = tgt_y.reshape(-1)
 
         loss = criterion(out, tgt_y)
         loss.backward()
@@ -75,7 +74,6 @@ def train_epoch(model, loader, optimizer, criterion, scheduler):
         total_loss += loss.item()
 
     return total_loss / len(loader)
-
 
 
 def evaluate(model, loader, criterion):
@@ -115,8 +113,6 @@ def main():
         batch_size=BATCH_SIZE, shuffle=False, collate_fn=_collate
     )
 
-
-
     model = Transformer(
         src_vocab_size=len(src_vocab),
         tgt_vocab_size=len(tgt_vocab),
@@ -132,12 +128,15 @@ def main():
     print(f"Parameters: {sum(p.numel() for p in model.parameters()):,}")
 
     optimizer = torch.optim.Adam(
-        model.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.98), eps=1e-9
+        model.parameters(), lr=LEARNING_RATE, betas=(0.9, 0.98), eps=1e-9,
+        weight_decay=WEIGHT_DECAY,
     )
     scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda)
-    criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
+    criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX, label_smoothing=LABEL_SMOOTHING)
 
     best_val = float("inf")
+    best_bleu = 0.0
+    epochs_no_improve = 0
 
     logger.info(f"src vocab: {len(src_vocab):,} | tgt vocab: {len(tgt_vocab):,}")
     logger.info(f"Device: {DEVICE}")
@@ -151,16 +150,31 @@ def main():
         if epoch % BLEU_EVERY == 0 or epoch == NUM_EPOCHS:
             bleu_score, _, _ = evaluate_bleu(model, val_loader, src_vocab, tgt_vocab, DEVICE, max_len=MAX_LEN)
             bleu_str = f" | BLEU {bleu_score:.2f}"
+            if bleu_score > best_bleu:
+                best_bleu = bleu_score
+                torch.save(model.state_dict(), "best_bleu_model.pt")
+                bleu_str += " (best BLEU saved)"
 
         saved = ""
         if val_loss < best_val:
             best_val = val_loss
+            epochs_no_improve = 0
             saved = " (saved)"
             torch.save(model.state_dict(), "best_model.pt")
+        else:
+            epochs_no_improve += 1
 
         logger.info(f"Epoch {epoch:02d} | train {train_loss:.3f} | val {val_loss:.3f}{bleu_str}{saved}")
         print(f"Epoch {epoch:02d} | train {train_loss:.3f} | val {val_loss:.3f}{bleu_str}{saved}")
 
+        if epochs_no_improve >= PATIENCE:
+            logger.info(f"Early stopping at epoch {epoch}")
+            print(f"Early stopping at epoch {epoch}")
+            break
+
+    logger.info(f"Best val loss: {best_val:.3f} | Best BLEU: {best_bleu:.2f}")
+    print(f"Best val loss: {best_val:.3f} | Best BLEU: {best_bleu:.2f}")
+
+
 if __name__ == "__main__":
     main()
-
