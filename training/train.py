@@ -15,7 +15,7 @@ import torch.nn as nn
 from torch.utils.data import DataLoader
 import pickle
 import logging
-from utils.masking import make_padding_mask
+from utils.masking import make_padding_mask, make_tgt_mask
 from training.evaluate import evaluate_bleu
 
 logging.basicConfig(
@@ -37,7 +37,7 @@ NUM_LAYERS = 6
 DROPOUT = 0.2
 MAX_LEN = 128
 BATCH_SIZE = 128
-NUM_EPOCHS = 60
+NUM_EPOCHS = 120
 LEARNING_RATE = 1
 WEIGHT_DECAY = 1e-4
 LABEL_SMOOTHING = 0.1
@@ -59,7 +59,7 @@ def train_epoch(model, loader, optimizer, criterion, scheduler):
     for src, tgt, tgt_y in loader:
         src, tgt, tgt_y = src.to(DEVICE), tgt.to(DEVICE), tgt_y.to(DEVICE)
         src_mask = make_padding_mask(src, PAD_IDX)
-        tgt_mask = make_padding_mask(tgt, PAD_IDX)
+        tgt_mask = make_tgt_mask(tgt, PAD_IDX)  # padding + causal
 
         optimizer.zero_grad()
         out = model(src, tgt, src_mask=src_mask, tgt_mask=tgt_mask)
@@ -79,17 +79,27 @@ def train_epoch(model, loader, optimizer, criterion, scheduler):
 def evaluate(model, loader, criterion):
     model.eval()
     total_loss = 0
-    for src, tgt, tgt_y in loader:
-        src, tgt, tgt_y = src.to(DEVICE), tgt.to(DEVICE), tgt_y.to(DEVICE)
+    with torch.no_grad():
+        for src, tgt, tgt_y in loader:
+            src, tgt, tgt_y = src.to(DEVICE), tgt.to(DEVICE), tgt_y.to(DEVICE)
 
-        src_mask = make_padding_mask(src, PAD_IDX)
-        tgt_mask = make_padding_mask(tgt, PAD_IDX)
+            src_mask = make_padding_mask(src, PAD_IDX)
+            tgt_mask = make_tgt_mask(tgt, PAD_IDX)  # padding + causal
 
-        out = model(src, tgt, src_mask=src_mask, tgt_mask=tgt_mask)
-        out = out.reshape(-1, out.size(-1))
-        tgt_y = tgt_y.reshape(-1)
-        total_loss += criterion(out, tgt_y).item()
+            out = model(src, tgt, src_mask=src_mask, tgt_mask=tgt_mask)
+            out = out.reshape(-1, out.size(-1))
+            tgt_y = tgt_y.reshape(-1)
+            total_loss += criterion(out, tgt_y).item()
     return total_loss / len(loader)
+
+
+def sanity_check(bleu_score, hyps, refs, n=3):
+    """Prints a few predictions vs references before trusting any BLEU number."""
+    logger.info("---- Sanity check ----")
+    for h, r in zip(hyps[:n], refs[:n]):
+        logger.info(f"  PRED: {h}")
+        logger.info(f"  REF : {r}")
+    logger.info("----------------------")
 
 
 def main():
@@ -148,7 +158,8 @@ def main():
 
         bleu_str = ""
         if epoch % BLEU_EVERY == 0 or epoch == NUM_EPOCHS:
-            bleu_score, _, _ = evaluate_bleu(model, val_loader, src_vocab, tgt_vocab, DEVICE, max_len=MAX_LEN)
+            bleu_score, hyps, refs = evaluate_bleu(model, val_loader, src_vocab, tgt_vocab, DEVICE, max_len=MAX_LEN)
+            sanity_check(bleu_score, hyps, refs)
             bleu_str = f" | BLEU {bleu_score:.2f}"
             if bleu_score > best_bleu:
                 best_bleu = bleu_score
