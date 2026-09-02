@@ -8,6 +8,7 @@ A PyTorch reimplementation of the architecture proposed in **"Attention Is All Y
 ## Table of Contents
 
 - [Overview](#overview)
+- [Results](#results)
 - [Architecture](#architecture)
 - [Attention Visualization](#attention-visualization)
 - [Dataset](#dataset)
@@ -22,6 +23,15 @@ A PyTorch reimplementation of the architecture proposed in **"Attention Is All Y
 ---
 
 ## Overview
+
+## Results
+
+Trained from scratch on Multi30k (EN→DE), 29k training pairs.
+
+| Metric | Value |
+|---|---|
+| Best BLEU (val) | 41.07 |
+| Parameters | 57.9M |
 
 ## Architecture
 
@@ -86,7 +96,7 @@ Source Sentence                         Target Sentence (shifted right)
 | Max sequence length | 128 tokens |
 | Vocabulary cutoff | Tokens with frequency < 2 are mapped to `<unk>` |
 
-Vocabularies are built once during training and pickled to `src_vocab.pkl` / `tgt_vocab.pkl`
+Vocabularies are built once during training and pickled to `checkpoints/src_vocab.pkl` / `checkpoints/tgt_vocab.pkl`
 
 ---
 
@@ -121,10 +131,12 @@ Transformer/
 |
 |-- training/
 |   |-- train.py                     # Training entrypoint
+|   |-- evaluate.py                  # BLEU evaluation
 |   |-- translate.py                 # Inference / translation script
 |
-|-- docs/
-|   |-- assets/                      # README images
+|-- checkpoints/                     # vocab pickles + model checkpoints
+|
+|-- imgs/                            # README images
 |
 |-- requirements.txt                 # Python dependencies
 ```
@@ -157,8 +169,8 @@ This will:
 
 1. Download Multi30k and build source/target vocabularies, saving them to `src_vocab.pkl` and `tgt_vocab.pkl`
 2. Train the Transformer logging to both the console and `training.log`
-3. Evaluate on the validation split after every epoch
-4. Save the best checkpoint (by validation loss) to `best_model.pt`
+3. Evaluate loss on the validation split every epoch, and BLEU every 5 epochs
+4. Save the best checkpoints to `best_model.pt` (lowest val loss) and `best_bleu_model.pt` (highest BLEU)
 
 ---
 
@@ -173,7 +185,7 @@ python training/translate.py
 ```python
 from training.translate import load_model_vocabs, translate
 
-model, src_vocab, tgt_vocab = load_model_vocabs("best_model.pt")
+model, src_vocab, tgt_vocab = load_model_vocabs()
 print(translate("A dog is running in the park.", model, src_vocab, tgt_vocab))
 ```
 
@@ -189,17 +201,10 @@ All hyperparameters currently live as constants at the top of `training/train.py
 | `NUM_HEADS` | Number of attention heads | 8 |
 | `FF_DIM` | Feed-forward inner dimension | 2048 |
 | `NUM_LAYERS` | Encoder and decoder layers | 6 |
-| `DROPOUT` | Dropout probability | 0.1 |
+| `DROPOUT` | Dropout probability | 0.2 |
 | `MAX_LEN` | Max source/target sequence length | 128 |
 | `BATCH_SIZE` | Training batch size | 128 |
-| `NUM_EPOCHS` | Training # Transformer From Scratch
-
-
-
-## Implementation Notes
-
-- **Tokenization**: a simple lowercase whitespace splitter (`data/tokenizer.py`), not a subword tokenizer like BPE — sufficient for Multi30k's vocabulary size but a limiting factor on larger corpora.
-- **Positional encoding**: fixed sinusoidal encodings (`sin`/`cos` of varying frequency) are added to embeddings rather than learned positional embeddings.
+| `NUM_EPOCHS` | Max training epochs (early stopping usually ends sooner) | 60 |
 
 ---
 
